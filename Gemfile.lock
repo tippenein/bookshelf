@@ -1,0 +1,51 @@
+GIT
+  remote: https://github.com/tippenein/ebook_library.git
+  revision: d4e3bfe80d3606939b38ba748769e01fe39dd267
+  branch: master
+  specs:
+    ebook_library (0.2.0)
+      epub-parser
+      mobi
+      monadic
+      pdf-reader
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    Ascii85 (1.0.2)
+    addressable (2.4.0)
+    afm (0.2.2)
+    archive-zip (0.8.0)
+      io-like (~> 0.3.0)
+    epub-parser (0.2.7)
+      addressable (>= 2.3.5)
+      archive-zip
+      nokogiri (~> 1.6)
+      rchardet (>= 1.6.1)
+    hashery (2.1.2)
+    io-like (0.3.0)
+    mini_portile2 (2.1.0)
+    mobi (1.0.0)
+    monadic (0.8.1)
+    nokogiri (1.6.8)
+      mini_portile2 (~> 2.1.0)
+      pkg-config (~> 1.1.7)
+    pdf-reader (1.4.0)
+      Ascii85 (~> 1.0.0)
+      afm (~> 0.2.1)
+      hashery (~> 2.0)
+      ruby-rc4
+      ttfunk
+    pkg-config (1.1.7)
+    rchardet (1.6.1)
+    ruby-rc4 (0.1.5)
+    ttfunk (1.4.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  ebook_library!
+
+BUNDLED WITH
+   1.11.2

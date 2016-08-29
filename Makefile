@@ -1,18 +1,11 @@
-all: backend frontend
+gen:
+	twirec -e Book -i . --elm-out src/Gen --elm-version 0.17
 
-.PHONY: backend
-backend:
-	stack build
+build:
+	elm package install
 
-.PHONY: frontend
-frontend: frontend/dist/app.js
+html:
+	elm make src/Main.elm
 
-frontend/dist/app.js: frontend/src/*.elm frontend/src/Generated/*.elm
-	mkdir -p $(@D) && elm-make frontend/src/Main.elm --output $@
-
-frontend/src/Generated/Api.elm: code-generator/*.hs api/**/*.hs backend
-	mkdir -p $(@D) && stack exec code-generator
-
-.PHONY: serve
-serve:
-	stack exec backend
+js:
+	elm make src/Main.elm --output=elm.js

@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+module Main where
+
 import Lib
 import Reflex
 import Reflex.Dom
@@ -21,4 +23,4 @@ headElement = do
       ]) $ return ()
 
 bodyElement :: MonadWidget t m => m ()
-bodyElement = el "div" bookshelf
+bodyElement = el "div" $ bookshelf_for books

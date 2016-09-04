@@ -1,35 +1,27 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
 
-module Lib (
-  bookshelf
-) where
+module Lib where
 
 import Reflex
 import Reflex.Dom
 import qualified Data.Map as Map
+import Data.Monoid
+import Data.Text
 import Book
 
-bookshelf :: MonadWidget t m => m ()
-bookshelf = do
-  rec
-    let onButtonClass  = Map.singleton "class" "onButton"
-    let offButtonClass = Map.singleton "class" "offButton"
-    (buttonElement, _) <- elDynAttr' "button" cssClassDynamic $ elDynHtml' "span" textDynamic
-    buttonElementClickEvent <- return $ domEvent Click buttonElement
-    toggleDynamic <- toggle False buttonElementClickEvent
-    cssClassDynamic <- mapDyn (
-        \ x -> if x then (
-          onButtonClass :: Map.Map String String
-        ) else (
-          offButtonClass :: Map.Map String String
-        )
-      ) toggleDynamic
-    textDynamic <- mapDyn (
-        \ x -> if x then (
-          "<i class='fa fa-circle-o-notch' aria-hidden='true'></i>" :: String
-        ) else (
-          "<i class='fa fa-power-off' aria-hidden='true'></i>" :: String
-      )) toggleDynamic
-  return ()
+books = [Book "whatever" "stuff" "more" "yup"]
+bookElement :: MonadWidget t m => Book -> m ()
+bookElement b = do
+  -- textDynamic <- title b -- "<p>" ++ title b ++ "</p>"
+  el "span" $ text $ title b -- textDynamic
+  -- rec
+  --   let bookClass = Map.singleton "class" "book-binding"
+  --   (buttonElement, _) <- elAttr "button" bookClass $ el "span" $ text textDynamic
+  --   buttonElementClickEvent <- return $ domEvent Click buttonElement
+  --   toggleDynamic <- toggle False buttonElementClickEvent
+  --   textDynamic <- "<p>" ++ title b ++ "</p>"
+  -- return ()
+
+bookshelf_for :: MonadWidget t m => [Book] -> m ()
+bookshelf_for bs = mapM_ bookElement bs

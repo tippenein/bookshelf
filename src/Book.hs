@@ -5,16 +5,15 @@ module Book where
 
 import GHC.Generics
 import Data.Aeson
-import Data.Text
 import qualified Data.ByteString.Lazy as LBS
 
 data Book
   = Book
   {
-    author :: Text
-  , title :: Text
-  , location :: Text
-  , format :: Text
+    author :: String
+  , title :: String
+  , location :: String
+  , format :: String
   } deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 type Bookshelf = [Book]

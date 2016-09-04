@@ -3,3 +3,5 @@ TAGS
 elm-stuff
 frontend/dist/app.js
 node_modules/
+
+dist/

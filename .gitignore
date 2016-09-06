@@ -5,3 +5,5 @@ frontend/dist/app.js
 node_modules/
 
 dist/
+
+*.log

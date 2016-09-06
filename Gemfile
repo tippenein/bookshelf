@@ -1,3 +1,4 @@
 source 'https://rubygems.org'
 
-gem 'ebook_library', :git => 'https://github.com/tippenein/ebook_library.git', :branch => 'master'
+gem 'rake'
+gem 'ebook_library', '~> 0.3.0', :git => 'https://github.com/tippenein/ebook_library.git'

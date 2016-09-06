@@ -1,9 +1,8 @@
 GIT
   remote: https://github.com/tippenein/ebook_library.git
-  revision: d4e3bfe80d3606939b38ba748769e01fe39dd267
-  branch: master
+  revision: df93e73866d77521d37f52b9d45b859f3cec7b6d
   specs:
-    ebook_library (0.2.0)
+    ebook_library (0.3.0)
       epub-parser
       mobi
       monadic
@@ -37,6 +36,7 @@ GEM
       ruby-rc4
       ttfunk
     pkg-config (1.1.7)
+    rake (11.1.2)
     rchardet (1.6.1)
     ruby-rc4 (0.1.5)
     ttfunk (1.4.0)
@@ -45,7 +45,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  ebook_library!
+  ebook_library (~> 0.3.0)!
+  rake
 
 BUNDLED WITH
    1.11.2

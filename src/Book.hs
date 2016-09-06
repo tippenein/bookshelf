@@ -7,20 +7,17 @@ import GHC.Generics
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LBS
 
+emptyBookshelf = Bookshelf []
+
 data Book
   = Book
-  {
-    author :: String
+  { author :: String
   , title :: String
   , location :: String
   , format :: String
-  } deriving (Show, Eq, Generic, ToJSON, FromJSON)
+  } deriving (Show, Eq, Read, Generic, ToJSON, FromJSON)
 
-type Bookshelf = [Book]
-
-bookDump :: IO [Book]
-bookDump = do
-  d <- decode <$> LBS.readFile "books.json"
-  case d of
-    Nothing -> pure []
-    Just a -> pure a
+data Bookshelf
+  = Bookshelf
+  { books :: [Book] }
+  deriving (Show, Eq, Read, Generic, ToJSON, FromJSON)

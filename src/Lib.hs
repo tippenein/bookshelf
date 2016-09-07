@@ -8,6 +8,7 @@ module Lib where
 import Reflex
 import Reflex.Dom
 import Control.Monad
+import Control.Lens
 import qualified Data.Map as Map
 import Data.Monoid
 import Data.Text
@@ -30,21 +31,19 @@ headElement = do
         , ("href", link)
       ]) $ return ()
 
+data BookshelfAction
+  = InitialLoad
+  | Search String
+  deriving (Eq, Ord, Read, Show)
 
--- bookshelf = do
---   pb :: Event t () <- getPostBuild
---   let uri = "http://localhost:8080/books"
---   let req = XhrRequest "GET" uri def
---   submitEvent <- button "Submit"
---   let submitApiKey = tagDyn (value apiKey) submitEvent
---       loadingWidget = text "Waiting for an API Key..."
---   widgetHold loadingWidget $ fmap (\s -> bookshelf_for s) submitApiKey
---   rec
---     rsp :: Event t XhrResponse <- performRequestAsync req
---     let rspBookshelf :: Event t Bookshelf = fmapMaybe (\r -> decodeXhrResponse r) rsp
---     buttonEvent <- button "click me"
---     asyncEvent <- performRequestAsync (tag (constant defaultReq) buttonEvent)
---   return ()
+urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
+urlEncode base qs = undefined
+
+bodyElement :: MonadWidget t m => m ()
+bodyElement = el "div" $ do
+  header "Your Bookshelf"
+  bookshelfWidget
+
 header :: MonadWidget t m => String -> m ()
 header = el "h1" . text
 
@@ -52,20 +51,30 @@ bookshelfWidget :: MonadWidget t m => m ()
 bookshelfWidget = el "div" $ do
   postBuild <- getPostBuild
 
-  let uri = "http://localhost:8081/books"
-  let req = XhrRequest "GET" uri def
-  rsp :: Event t XhrResponse <- performRequestAsync (tag (constant req) postBuild)
+  q <- textInput def
+  searchClick <- button "search"
+  let searchEvent = tagDyn (value q) searchClick
+      loadingWidget = text "fetching books"
+      bookRequestEvent = leftmost [ Just <$> searchEvent
+                                  , Nothing <$ postBuild
+                                  ]
+  let uri query = "http://localhost:8081/books" ++ "?q=" ++ fromMaybe "" query
+  let req query = XhrRequest "GET" (uri query) def
+  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
   let rspBookshelf :: Event t Bookshelf = fmapMaybe (\r -> decodeXhrResponse r) rsp
   let books' :: Event t [Book] = fmap books rspBookshelf
-  let loadingWidget = text "fetching books"
-  widgetHold loadingWidget $ fmap (\s -> mapM_ book_element s) books'
+  widgetHold loadingWidget $ fmap (\s -> shelf_for s) books' --fmap (\s -> shelves s) books'
   pure ()
 
-bodyElement :: MonadWidget t m => m ()
-bodyElement = el "div" $ do
-  header "Your Bookshelf"
-  bookshelfWidget
+  -- let req md = XhrRequest "GET" (maybe defReq (\d -> defReq ++ "&date=" ++ d) md) def
+  -- rec rsp :: Event t XhrResponse <- performRequestAsync $ fmap req $
+  --       leftmost [ Nothing <$ pb
+  --                , fmap Just validDate ]
+shelf_for :: MonadWidget t m => [Book] -> m ()
+shelf_for s = do
+  elClass "ul" "unstyled" $ do
+    mapM_ book_element s
 
 book_element b = do
-  let textDynamic = title b ++ " by " ++ author b -- "<p>" ++ title b ++ "</p>"
-  el "span" $ text textDynamic
+  let textDynamic = title b <> " by " <> author b
+  el "li" $ text textDynamic

@@ -39,13 +39,14 @@ urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
 urlEncode base qs = undefined
 
 bodyElement :: MonadWidget t m => m ()
-bodyElement = el "div" $ do
-  header "Your Bookshelf"
+bodyElement = elClass "div" "wrapper" $ do
+  headerWithClass "Your Bookshelf" "right"
   bookshelfWidget
 
 header :: MonadWidget t m => String -> m ()
 header = el "h1" . text
 
+headerWithClass t c = elClass "h1" c $ text t
 
 req :: Maybe String -> XhrRequest
 req query = XhrRequest "GET" uri def
@@ -64,20 +65,18 @@ bookshelfWidget = el "div" $ do
                                   , Nothing <$ postBuild
                                   ]
   rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
-  let rspBookshelf :: Event t Bookshelf = fmapMaybe (\r -> decodeXhrResponse r) rsp
+  let rspBookshelf :: Event t Bookshelf = fmapMaybe decodeXhrResponse rsp
   let books' :: Event t [Book] = fmap books rspBookshelf
-  widgetHold loadingWidget $ fmap (\s -> shelf_for s) books' --fmap (\s -> shelves s) books'
+  widgetHold loadingWidget $ fmap shelf_for books'
   pure ()
 
-  -- let req md = XhrRequest "GET" (maybe defReq (\d -> defReq ++ "&date=" ++ d) md) def
-  -- rec rsp :: Event t XhrResponse <- performRequestAsync $ fmap req $
-  --       leftmost [ Nothing <$ pb
-  --                , fmap Just validDate ]
 shelf_for :: MonadWidget t m => [Book] -> m ()
-shelf_for s = do
-  elClass "ul" "unstyled" $ do
-    mapM_ book_element s
+shelf_for s = unstyledListWith book_element s
 
 book_element b = do
   let textDynamic = title b <> " by " <> author b
-  el "li" $ text textDynamic
+  elClass "li" "book-binding" $ text textDynamic
+
+unstyledListWith mapF items =
+  elClass "ul" "unstyled" $
+    mapM_ mapF items

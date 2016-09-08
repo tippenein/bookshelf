@@ -4,7 +4,6 @@ module BookServer.Database where
 import Data.Aeson (eitherDecode)
 import qualified Data.ByteString.Lazy as B
 import Data.Text (Text, isInfixOf, toLower)
-import Data.Maybe (fromMaybe)
 
 import BookServer.Types
 

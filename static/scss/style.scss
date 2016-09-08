@@ -1,12 +1,27 @@
+$dark: #252b3a;
 body {
+    font-color: $dark;
     margin:  0px;
     padding: 0px;
-    background-color: #252b3a;
+    border: 1em solid $dark;
+    font-size: 2em;
 }
-div {
-    text-align: center;
+
+.unstyled {
+    list-style-type: none;
+}
+
+.left {
+    float: left;
+}
+.right {
+    float: right;
+}
+.wrapper {
+    height: 100%;
+    background-color: light-brown;
 }
 
 .book-binding {
-    background-color: red;
+    border-bottom: 2px solid $dark;
 }

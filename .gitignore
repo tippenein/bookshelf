@@ -4,6 +4,6 @@ elm-stuff
 frontend/dist/app.js
 node_modules/
 
-dist/
+dist/*
 
 *.log

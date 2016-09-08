@@ -8,7 +8,6 @@ module Lib where
 import Reflex
 import Reflex.Dom
 import Control.Monad
-import Control.Lens
 import qualified Data.Map as Map
 import Data.Monoid
 import Data.Text
@@ -47,6 +46,12 @@ bodyElement = el "div" $ do
 header :: MonadWidget t m => String -> m ()
 header = el "h1" . text
 
+
+req :: Maybe String -> XhrRequest
+req query = XhrRequest "GET" uri def
+  where
+    uri = "http://localhost:8081/books" ++ "?q=" ++ fromMaybe "" query
+
 bookshelfWidget :: MonadWidget t m => m ()
 bookshelfWidget = el "div" $ do
   postBuild <- getPostBuild
@@ -58,8 +63,6 @@ bookshelfWidget = el "div" $ do
       bookRequestEvent = leftmost [ Just <$> searchEvent
                                   , Nothing <$ postBuild
                                   ]
-  let uri query = "http://localhost:8081/books" ++ "?q=" ++ fromMaybe "" query
-  let req query = XhrRequest "GET" (uri query) def
   rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
   let rspBookshelf :: Event t Bookshelf = fmapMaybe (\r -> decodeXhrResponse r) rsp
   let books' :: Event t [Book] = fmap books rspBookshelf

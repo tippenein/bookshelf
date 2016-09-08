@@ -2,7 +2,6 @@
 module BookServer.Server (runServer) where
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Either
 import Data.Text
 import Network.Wai
 import Network.Wai.Handler.Warp
@@ -20,10 +19,11 @@ server :: Server BookAPI
 server = listBooks
 
 listBooks :: Maybe Text -> Handler Bookshelf
-listBooks q = do
-  liftIO $ Database.listBooks q
+listBooks q = liftIO $ Database.listBooks q
 
+middleware :: Application -> Application
 middleware = logStdout . simpleCors
+
 app :: Application
 app = middleware (serve API.bookAPI server)
 

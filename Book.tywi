@@ -1,8 +1,0 @@
-module Book;
-
-type Book{
-  author : String;
-  title : String;
-  format : String;
-  location : String;
-}

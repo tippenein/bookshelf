@@ -52,18 +52,28 @@ metadataLoading = metadataContainer $ do
   text ""
   pure ()
 
+searchInput :: MonadWidget t m => m (TextInput t)
+searchInput = do
+  textInput $
+    def & attributes .~ constDyn
+      (mconcat [ "class" =: "books-search"
+               , "placeholder" =: "Search books"
+               ]
+      )
+
 bodyElement :: MonadWidget t m => m ()
 bodyElement = elClass "div" "wrapper" $ do
   postBuild <- getPostBuild
 
-  text "search"
-  q <- textInput def
+  q <- searchInput
+
   let searchInputDyn = _textInput_value q
 
   bookClick <- button "book"
   let bookRequestEvent = leftmost [ Just <$> updated searchInputDyn
                                   , Nothing <$ postBuild
                                   ]
+
   rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
   let books' :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
   let metadata :: Event t Book = Book "a" "b" "c" "d" <$ bookClick

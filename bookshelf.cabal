@@ -6,18 +6,25 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:
+      Lib
+    , Component
+    , DragonDrop
+
   build-depends:
       base
     , aeson 
     , bytestring
     , text
+    , ghcjs-base
+    , ghcjs-dom
     , haskell-src-exts >= 1.16 && < 1.18
     , reflex == 0.4.0
     , reflex-dom
     , containers == 0.5.*
     , safe == 0.3.*
   default-language:    Haskell2010
+  ghc-options: -fno-warn-missing-signatures
 
 executable bookshelf-exe
   hs-source-dirs:      app

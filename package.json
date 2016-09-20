@@ -14,10 +14,10 @@
     "build:css": "npm run scss && npm run autoprefixer",
     "build:dist": "mkdir -p dist/ && npm run build:js && npm run build:css",
     "serve": "browser-sync start --server 'dist/' --files 'dist/css/*.css, dist/*.js, **/*.html, !node_modules/**/*.html'",
-    "watch:lib": "onchange 'src/Lib.hs' -- npm run build:js",
+    "watch:lib": "onchange 'src/*.hs' -- npm run build:js",
     "watch:index": "onchange 'app/Main.hs' -- npm run build:js",
     "watch:css": "onchange 'static/scss/*.scss' -- npm run build:css",
-    "watch:all": "npm-run-all -p serve watch:index watch:css watch:lib"
+    "watch:all": "npm-run-all -p serve watch:css watch:lib"
   },
   "devDependencies": {
     "autoprefixer": "^6.3.1",

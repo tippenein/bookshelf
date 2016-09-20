@@ -7,15 +7,12 @@ module Lib where
 
 import Reflex
 import Reflex.Dom
-import Control.Monad
 import qualified Data.Map as Map
-import Data.Monoid
 import Data.Text
-import Book
-import Data.Maybe
-import System.IO.Unsafe
 
--- fetchBooks = unsafePerformIO getBooks
+import Book
+import qualified Component
+
 headElement :: MonadWidget t m => m ()
 headElement = do
   el "title" (text "Bookshelf")
@@ -24,59 +21,88 @@ headElement = do
   styleSheet "http://fonts.googleapis.com/css?family=Lato"
   styleSheet "https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css"
   where
-    styleSheet link = elAttr "link" (Map.fromList [
+    styleSheet _link = elAttr "link" (Map.fromList [
           ("rel", "stylesheet")
         , ("type", "text/css")
-        , ("href", link)
-      ]) $ return ()
+        , ("href", _link)
+      ]) $ pure ()
 
 data BookshelfAction
   = InitialLoad
-  | Search String
-  deriving (Eq, Ord, Read, Show)
+  | NoOp
+  | Query String
+  | Select Book
+  deriving (Eq, Read, Show)
 
-urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
-urlEncode base qs = undefined
+bookshelfContainer :: MonadWidget t m => m () -> m ()
+bookshelfContainer m = do
+  headerWithClass "Your Bookshelf" "center"
+  elClass "div" "six columns bookshelf" $ m
+
+metadataContainer :: MonadWidget t m => m () -> m ()
+metadataContainer = elClass "div" "four columns metadata"
+
+bookshelfLoading :: MonadWidget t m => m ()
+bookshelfLoading = bookshelfContainer $ do
+  text "loading books..."
+  pure ()
+
+metadataLoading :: MonadWidget t m => m ()
+metadataLoading = metadataContainer $ do
+  text ""
+  pure ()
 
 bodyElement :: MonadWidget t m => m ()
 bodyElement = elClass "div" "wrapper" $ do
-  headerWithClass "Your Bookshelf" "right"
-  bookshelfWidget
+  postBuild <- getPostBuild
+
+  text "search"
+  q <- textInput def
+  let searchInputDyn = _textInput_value q
+
+  bookClick <- button "book"
+  let bookRequestEvent = leftmost [ Just <$> updated searchInputDyn
+                                  , Nothing <$ postBuild
+                                  ]
+  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
+  let books' :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
+  let metadata :: Event t Book = Book "a" "b" "c" "d" <$ bookClick
+
+  widgetHold bookshelfLoading $ fmap shelf_for books'
+
+  widgetHold metadataLoading $ fmap metadata_for metadata
+  pure ()
 
 header :: MonadWidget t m => String -> m ()
 header = el "h1" . text
 
-headerWithClass t c = elClass "h1" c $ text t
+metadata_for :: MonadWidget t m => Book -> m ()
+metadata_for book = metadataContainer $ do
 
-req :: Maybe String -> XhrRequest
-req query = XhrRequest "GET" uri def
-  where
-    uri = "http://localhost:8081/books" ++ "?q=" ++ fromMaybe "" query
-
-bookshelfWidget :: MonadWidget t m => m ()
-bookshelfWidget = el "div" $ do
-  postBuild <- getPostBuild
-
-  q <- textInput def
-  searchClick <- button "search"
-  let searchEvent = tagDyn (value q) searchClick
-      loadingWidget = text "fetching books"
-      bookRequestEvent = leftmost [ Just <$> searchEvent
-                                  , Nothing <$ postBuild
-                                  ]
-  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
-  let rspBookshelf :: Event t Bookshelf = fmapMaybe decodeXhrResponse rsp
-  let books' :: Event t [Book] = fmap books rspBookshelf
-  widgetHold loadingWidget $ fmap shelf_for books'
+  elClass "span" "book-meta" $ do
+    elClass "p" "book-format" $ text (format book)
   pure ()
 
 shelf_for :: MonadWidget t m => [Book] -> m ()
-shelf_for s = unstyledListWith book_element s
+shelf_for books = bookshelfContainer $ do
+  elClass "dl" "unstyled" $
+    mapM_ book_element books
 
 book_element b = do
-  let textDynamic = title b <> " by " <> author b
-  elClass "li" "book-binding" $ text textDynamic
+  elClass "span" "book-binding" $ do
+    elClass "dt" "book-title" $ text (title b)
+    elClass "dd" "book-author" $ text (author b)
+  pure ()
 
-unstyledListWith mapF items =
-  elClass "ul" "unstyled" $
-    mapM_ mapF items
+headerWithClass t c = elClass "h1" c $ text t
+
+defaultUrl = "http://localhost:8081/books"
+
+req :: Maybe String -> XhrRequest
+req Nothing = XhrRequest "GET" defaultUrl def
+req (Just q)= XhrRequest "GET" uri def
+  where
+    uri = defaultUrl ++ "?q=" ++ q
+
+urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
+urlEncode base qs = undefined

@@ -3,7 +3,9 @@ body {
     font-color: $dark;
     margin:  0px;
     padding: 0px;
-    border: 1em solid $dark;
+    border-left: 1em solid $dark;
+    border-right: 1em solid $dark;
+    border-top: 1em solid $dark;
     font-size: 2em;
 }
 
@@ -18,10 +20,13 @@ body {
     float: right;
 }
 .wrapper {
-    height: 100%;
+    height:100vh;
     background-color: light-brown;
 }
 
+.book-title {
+    font-style: bold;
+}
 .book-binding {
     border-bottom: 2px solid $dark;
 }

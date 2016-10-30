@@ -9,6 +9,8 @@ import Reflex
 import Reflex.Dom
 import qualified Data.Map as Map
 import Data.Text
+import Data.Foldable
+import Data.Traversable
 
 import Book
 import qualified Component
@@ -29,14 +31,83 @@ headElement = do
 
 data BookshelfAction
   = InitialLoad
-  | NoOp
   | Query String
   | Select Book
   deriving (Eq, Read, Show)
 
+data ShelfAction
+  = BookClick
+  | SendToDevice
+
+type MM a = Map.Map Int a
+
+searchInput :: MonadWidget t m => m (TextInput t)
+searchInput = do
+  textInput $
+    def & attributes .~ constDyn
+      (mconcat [ "class" =: "books-search"
+               , "placeholder" =: "Search books"
+               ]
+      )
+
+formatPairs = Prelude.zip ts ts
+  where
+    ts = ["epub", "mobi", "azw3", "pdf", "other"]
+
+bodyElement :: MonadWidget t m => m ()
+bodyElement = elClass "div" "wrapper" $ do
+  postBuild <- getPostBuild
+
+  q <- searchInput
+
+  let query = _textInput_value q
+  let bookRequestEvent = leftmost [ Just <$> updated query
+                                  , Nothing <$ postBuild
+                                  ]
+
+  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
+  let booksResponse :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
+
+  let ops = Map.fromList $ formatPairs
+
+  d <- dropdown "epub" (constDyn ops) def
+
+  bookClicked <- widgetHold bookshelfLoading $ fmap shelf_for booksResponse
+  -- bookClicked <- switch (current (mergeList <$> book_events))
+  -- dynText =<< fmap title bookClicked
+
+  -- widgetHold metadataLoading $ metadata_for =<< bookClicked
+  pure ()
+
+shelf_for :: MonadWidget t m => [Book] -> m ()
+shelf_for books = do
+  _ <- simpleList (constDyn books) bookEl
+  pure ()
+    -- elClass "dl" "unstyled" $
+    --   fmap bookEl b
+
+bookEl :: MonadWidget t m => Dynamic t Book -> m ()
+bookEl b = do
+  el "div" $ do
+    elClass "dt" "book-title" $ mapDyn title b
+    elClass "dd" "book-author" $ mapDyn author b
+  pure()
+  -- pure $ domEvent Click b
+
+metadata_for :: MonadWidget t m => Book -> m ()
+metadata_for book = do
+  elClass "span" "book-meta" $ do
+    el "p" $ text "format"
+    elClass "p" "book-format" $ text (format book)
+
+-- simpleList :: Dynamic [v] -> (Dynamic v -> m a) -> m (Dynamic [a])
+
+-- shelf_for :: MonadWidget t m => Dynamic t [Book] -> m (Dynamic t [Event t Book])
+-- shelf_for books = fmap bookEl books
+
 bookshelfContainer :: MonadWidget t m => m () -> m ()
 bookshelfContainer m = do
-  headerWithClass "Your Bookshelf" "center"
+  elClass "h1" "center" $ text "your bookshelf"
   elClass "div" "six columns bookshelf" $ m
 
 metadataContainer :: MonadWidget t m => m () -> m ()
@@ -49,62 +120,11 @@ bookshelfLoading = bookshelfContainer $ do
 
 metadataLoading :: MonadWidget t m => m ()
 metadataLoading = metadataContainer $ do
-  text ""
-  pure ()
-
-searchInput :: MonadWidget t m => m (TextInput t)
-searchInput = do
-  textInput $
-    def & attributes .~ constDyn
-      (mconcat [ "class" =: "books-search"
-               , "placeholder" =: "Search books"
-               ]
-      )
-
-bodyElement :: MonadWidget t m => m ()
-bodyElement = elClass "div" "wrapper" $ do
-  postBuild <- getPostBuild
-
-  q <- searchInput
-
-  let searchInputDyn = _textInput_value q
-
-  bookClick <- button "book"
-  let bookRequestEvent = leftmost [ Just <$> updated searchInputDyn
-                                  , Nothing <$ postBuild
-                                  ]
-
-  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
-  let books' :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
-  let metadata :: Event t Book = Book "a" "b" "c" "d" <$ bookClick
-
-  widgetHold bookshelfLoading $ fmap shelf_for books'
-
-  widgetHold metadataLoading $ fmap metadata_for metadata
+  text "..."
   pure ()
 
 header :: MonadWidget t m => String -> m ()
 header = el "h1" . text
-
-metadata_for :: MonadWidget t m => Book -> m ()
-metadata_for book = metadataContainer $ do
-
-  elClass "span" "book-meta" $ do
-    elClass "p" "book-format" $ text (format book)
-  pure ()
-
-shelf_for :: MonadWidget t m => [Book] -> m ()
-shelf_for books = bookshelfContainer $ do
-  elClass "dl" "unstyled" $
-    mapM_ book_element books
-
-book_element b = do
-  elClass "span" "book-binding" $ do
-    elClass "dt" "book-title" $ text (title b)
-    elClass "dd" "book-author" $ text (author b)
-  pure ()
-
-headerWithClass t c = elClass "h1" c $ text t
 
 defaultUrl = "http://localhost:8081/books"
 
@@ -114,5 +134,5 @@ req (Just q)= XhrRequest "GET" uri def
   where
     uri = defaultUrl ++ "?q=" ++ q
 
-urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
-urlEncode base qs = undefined
+-- urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
+-- urlEncode base qs = undefined

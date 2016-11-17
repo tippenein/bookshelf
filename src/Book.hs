@@ -5,9 +5,9 @@ module Book where
 
 import GHC.Generics
 import Data.Aeson
-import qualified Data.ByteString.Lazy as LBS
 
-emptyBookshelf = Bookshelf []
+instance Ord Book where
+  b1@(Book a t _ _) `compare` b2@(Book a2 t2 _ _) = a2 `compare` a
 
 data Book
   = Book

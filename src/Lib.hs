@@ -1,16 +1,15 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 
 module Lib where
 
 import Reflex
 import Reflex.Dom
+import Data.Monoid ((<>))
 import qualified Data.Map as Map
-import Data.Text
-import Data.Foldable
-import Data.Traversable
 
 import Book
 import qualified Component
@@ -29,108 +28,113 @@ headElement = do
         , ("href", _link)
       ]) $ pure ()
 
-data BookshelfAction
+update :: Action -> Model -> Model
+update InitialLoad m = m
+update (Query s) m = m { _filters = "q" =: s }
+update (BooksResponse rsp) m = m { _books = Map.fromList $ zip [(1::Int)..] rsp }
+update (SelectBook k) m = m { _selected = Just k }
+update (SendToDevice _) m = m
+update (FilterChange k v) m = m { _filters = Map.insert k v (_filters m) }
+  -- shelfEvents <- mapDyn shelf_for $ _books model
+
+data Model
+  = Model
+  { _books :: Map.Map Int Book
+  , _selected :: Maybe Int
+  , _filters :: Map.Map String String
+  , _error :: Maybe String
+  }
+
+initialModel :: Model
+initialModel
+  = Model
+  { _books = Map.empty
+  , _filters = Map.empty
+  , _selected = Nothing
+  , _error = Nothing
+  }
+
+data Action
   = InitialLoad
   | Query String
-  | Select Book
+  | SelectBook Int
+  | FilterChange String String
+  | BooksResponse [Book]
+  | SendToDevice Book
   deriving (Eq, Read, Show)
 
-data ShelfAction
-  = BookClick
-  | SendToDevice
-
-type MM a = Map.Map Int a
-
-searchInput :: MonadWidget t m => m (TextInput t)
-searchInput = do
-  textInput $
-    def & attributes .~ constDyn
-      (mconcat [ "class" =: "books-search"
-               , "placeholder" =: "Search books"
-               ]
-      )
-
-formatPairs = Prelude.zip ts ts
-  where
-    ts = ["epub", "mobi", "azw3", "pdf", "other"]
-
-bodyElement :: MonadWidget t m => m ()
-bodyElement = elClass "div" "wrapper" $ do
+view :: MonadWidget t m => Dynamic t Model -> m (Event t Action)
+view model = elClass "div" "wrapper" $ do
   postBuild <- getPostBuild
-
-  q <- searchInput
+  q <- Component.searchInput
 
   let query = _textInput_value q
-  let bookRequestEvent = leftmost [ Just <$> updated query
-                                  , Nothing <$ postBuild
-                                  ]
+  let bookRequestEvents = [ Query <$> updated query
+                          , InitialLoad <$ postBuild
+                          ]
 
-  rsp :: Event t XhrResponse <- performRequestAsync $ req <$> bookRequestEvent
+  -- filter options
+  selectedFormat <- Component.dropdownWith dropdownOptions
+
+  -- remote events
+  let requestEvent = leftmost bookRequestEvents
+  rsp :: Event t XhrResponse <- performRequestAsync $ mkReq <$> requestEvent
   let booksResponse :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
 
-  let ops = Map.fromList $ formatPairs
+  bs <- mapDyn _books model
+  selectedBook <- mapDyn _selected model
+  bookSelected <- el "ul" $ Component.selectableList selectedBook bs $ \sel p -> do
+    domEvent Click <$> bookEl sel p
 
-  d <- dropdown "epub" (constDyn ops) def
+  pure $ leftmost $
+    [ SelectBook <$> bookSelected
+    , BooksResponse <$> booksResponse
+    , FilterChange "format" <$> updated selectedFormat
+    , requestEvent
+    ]
 
-  bookClicked <- widgetHold bookshelfLoading $ fmap shelf_for booksResponse
-  -- bookClicked <- switch (current (mergeList <$> book_events))
-  -- dynText =<< fmap title bookClicked
+bookEl :: (MonadWidget t m)
+       => Dynamic t Bool
+       -> Dynamic t Book
+       -> m(El t)
+bookEl sel b = do
+  attrs <- mapDyn (\s -> monoidGuard s $ Component.selectedStyle ) sel
+  (element,_) <- elDynAttr' "li" attrs $ do
+    dynText =<< mapDyn title b
+    text " - "
+    dynText =<< mapDyn author b
+  pure element
 
-  -- widgetHold metadataLoading $ metadata_for =<< bookClicked
+monoidGuard :: Monoid a => Bool -> a -> a
+monoidGuard p a = if p then a else mempty
+
+dropdownOptions = ["epub", "mobi", "azw3", "pdf", "other"]
+
+bodyElement :: MonadWidget t m => m ()
+bodyElement = do
+  rec changes <- view model
+      model <- foldDyn update initialModel changes
   pure ()
 
-shelf_for :: MonadWidget t m => [Book] -> m ()
-shelf_for books = do
-  _ <- simpleList (constDyn books) bookEl
-  pure ()
-    -- elClass "dl" "unstyled" $
-    --   fmap bookEl b
+-- shelf_for :: [Book] -> Event t Integer
+-- shelf_for books = do
+--   event <- selectViewListWithKey_ (constDyn 1) (constDyn books') $ \k bookDyn _switched ->
+--     case Map.lookup k (Map.fromList $ zip [1..] books) of
+--       Just b -> do
+--         pure $ updated bookDyn
+--       Nothing -> error "what"
+--   pure event
 
-bookEl :: MonadWidget t m => Dynamic t Book -> m ()
-bookEl b = do
-  el "div" $ do
-    elClass "dt" "book-title" $ mapDyn title b
-    elClass "dd" "book-author" $ mapDyn author b
-  pure()
-  -- pure $ domEvent Click b
-
-metadata_for :: MonadWidget t m => Book -> m ()
-metadata_for book = do
-  elClass "span" "book-meta" $ do
-    el "p" $ text "format"
-    elClass "p" "book-format" $ text (format book)
-
--- simpleList :: Dynamic [v] -> (Dynamic v -> m a) -> m (Dynamic [a])
-
--- shelf_for :: MonadWidget t m => Dynamic t [Book] -> m (Dynamic t [Event t Book])
--- shelf_for books = fmap bookEl books
-
-bookshelfContainer :: MonadWidget t m => m () -> m ()
-bookshelfContainer m = do
-  elClass "h1" "center" $ text "your bookshelf"
-  elClass "div" "six columns bookshelf" $ m
-
-metadataContainer :: MonadWidget t m => m () -> m ()
-metadataContainer = elClass "div" "four columns metadata"
-
-bookshelfLoading :: MonadWidget t m => m ()
-bookshelfLoading = bookshelfContainer $ do
-  text "loading books..."
-  pure ()
-
-metadataLoading :: MonadWidget t m => m ()
-metadataLoading = metadataContainer $ do
-  text "..."
-  pure ()
-
-header :: MonadWidget t m => String -> m ()
-header = el "h1" . text
+-- bookEl :: MonadWidget t m => Dynamic t (Map.Map String String) -> Book -> m ()
+-- bookEl attrs b = elDynAttr' "div" attrs $ do
+--   elClass "dt" "book-title" $ text $ title b
+--   elClass "dd" "book-author" $ text $ author b
 
 defaultUrl = "http://localhost:8081/books"
 
-req :: Maybe String -> XhrRequest
-req Nothing = XhrRequest "GET" defaultUrl def
-req (Just q)= XhrRequest "GET" uri def
+mkReq :: Action -> XhrRequest
+mkReq InitialLoad= XhrRequest "GET" defaultUrl def
+mkReq (Query q)= XhrRequest "GET" uri def
   where
     uri = defaultUrl ++ "?q=" ++ q
 

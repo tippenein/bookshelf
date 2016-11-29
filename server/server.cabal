@@ -37,18 +37,18 @@ executable server
   default-language: Haskell2010
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
 
-test-suite tests
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:
-      base -any
-    , server -any
-    , hspec ==2.*
-    , HUnit -any
-    , QuickCheck -any
-  default-language:    Haskell2010
-  other-modules:
-      Server
-      ServerSpec
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+-- test-suite tests
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      test
+--   main-is:             Spec.hs
+--   build-depends:
+--       base -any
+--     , server -any
+--     , hspec ==2.*
+--     , HUnit -any
+--     , QuickCheck -any
+--   default-language:    Haskell2010
+--   other-modules:
+--       Server
+--       ServerSpec
+--   ghc-options:         -threaded -rtsopts -with-rtsopts=-N

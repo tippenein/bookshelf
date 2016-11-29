@@ -1,9 +1,14 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Component where
 
 import Book
 import Reflex.Dom
 import           Data.Map         (Map)
 import qualified Data.Map as Map
+import Data.Text (Text)
+
+type AttrMap = Map Text Text
 
 searchInput :: MonadWidget t m => m (TextInput t)
 searchInput = do
@@ -14,8 +19,8 @@ searchInput = do
                ]
       )
 
-formatSimplePairs :: [String] -> [(String, String)]
-formatSimplePairs ts = zip ts ts 
+formatSimplePairs :: [Text] -> [(Text, Text)]
+formatSimplePairs ts = zip ts ts
 
 selectableList :: (MonadWidget t m, Ord k)
                => Dynamic t (Maybe k) -- Key of element that may be selected
@@ -25,17 +30,20 @@ selectableList :: (MonadWidget t m, Ord k)
                -> m (Event t k) -- List fires events whenever an element is selected
 selectableList selection elems mkEntry = do
   selectEntry <- listWithKey elems $ \k v -> do
-      isSelected <- forDyn selection $ \s -> s == Just k
+      let isSelected = ffor selection $ \s -> s == Just k
       fmap (const k) <$> mkEntry isSelected v
   switchPromptlyDyn <$> mapDyn (leftmost . Map.elems) selectEntry
 
+selectedStyle :: AttrMap
 selectedStyle = "style" =: "font-weight: bold"
 
+dropdownWith :: ( MonadWidget t m ) => [Text] -> m ( Dynamic t Text )
 dropdownWith pairs = do
   let ops = Map.fromList $ formatSimplePairs pairs
   formatDropdown <- dropdown "mobi" (constDyn ops) def
   let selectedFormat = _dropdown_value formatDropdown
   pure selectedFormat
+
 metadata_for :: MonadWidget t m => Book -> m ()
 metadata_for book = do
   elClass "span" "book-meta" $ do
@@ -60,5 +68,5 @@ metadataLoading = metadataContainer $ do
   text "..."
   pure ()
 
-header :: MonadWidget t m => String -> m ()
+header :: MonadWidget t m => Text -> m ()
 header = el "h1" . text

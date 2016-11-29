@@ -1,6 +1,8 @@
 {-# LANGUAGE RecursiveDo #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 
@@ -8,8 +10,11 @@ module Lib where
 
 import Reflex
 import Reflex.Dom
+import Data.Maybe (fromMaybe)
 import Data.Monoid ((<>))
+import Data.Text (Text)
 import qualified Data.Map as Map
+import qualified Data.Text as T
 
 import Book
 import qualified Component
@@ -35,15 +40,14 @@ update (BooksResponse rsp) m = m { _books = Map.fromList $ zip [(1::Int)..] rsp 
 update (SelectBook k) m = m { _selected = Just k }
 update (SendToDevice _) m = m
 update (FilterChange k v) m = m { _filters = Map.insert k v (_filters m) }
-  -- shelfEvents <- mapDyn shelf_for $ _books model
 
 data Model
   = Model
   { _books :: Map.Map Int Book
+  , _filters :: Map.Map Text Text
   , _selected :: Maybe Int
-  , _filters :: Map.Map String String
-  , _error :: Maybe String
-  }
+  , _error :: Maybe Text
+  } deriving Show
 
 initialModel :: Model
 initialModel
@@ -56,15 +60,15 @@ initialModel
 
 data Action
   = InitialLoad
-  | Query String
-  | SelectBook Int
-  | FilterChange String String
+  | Query Text
   | BooksResponse [Book]
+  | SelectBook Int
+  | FilterChange Text Text
   | SendToDevice Book
   deriving (Eq, Read, Show)
 
 view :: MonadWidget t m => Dynamic t Model -> m (Event t Action)
-view model = elClass "div" "wrapper" $ do
+view model = elClass "div" "twelve columns" $ do
   postBuild <- getPostBuild
   q <- Component.searchInput
 
@@ -81,10 +85,17 @@ view model = elClass "div" "wrapper" $ do
   rsp :: Event t XhrResponse <- performRequestAsync $ mkReq <$> requestEvent
   let booksResponse :: Event t [Book] = books <$> fmapMaybe decodeXhrResponse rsp
 
-  bs <- mapDyn _books model
-  selectedBook <- mapDyn _selected model
-  bookSelected <- el "ul" $ Component.selectableList selectedBook bs $ \sel p -> do
-    domEvent Click <$> bookEl sel p
+  let bookMap = fmap _books model
+  let selectedBook = fmap _selected model
+  bookSelected <- divClass "row" $ do
+    bs' <- shelfContainer $ do
+      bs <- el "ul" $ Component.selectableList selectedBook bookMap $ \sel p -> do
+        domEvent Click <$> bookEl sel p
+      pure bs
+
+    Component.metadataContainer $ do
+      display $ zipDynWith maybeLookup selectedBook bookMap
+    pure bs'
 
   pure $ leftmost $
     [ SelectBook <$> bookSelected
@@ -93,21 +104,42 @@ view model = elClass "div" "wrapper" $ do
     , requestEvent
     ]
 
+shelfContainer :: MonadWidget t m => m a -> m a
+shelfContainer body = elClass "div" "wrapper six columns" $ body
+
+metadataContainer :: MonadWidget t m => m a -> m a
+metadataContainer body = elClass "div" "six columns" $ body
+
+maybeLookup :: Maybe Int -> Map.Map Int a -> Maybe a
+maybeLookup midx m = case midx of
+  Nothing -> Nothing
+  Just idx -> Map.lookup idx m
+
+nothing :: MonadWidget t m => m ()
+nothing = el "p" $ text ""
+
+maybeBookWidget :: MonadWidget t m => Maybe Book -> m ()
+maybeBookWidget mb = case mb of
+  Nothing -> nothing
+  Just b -> el "p" $ text $ title b
+
 bookEl :: (MonadWidget t m)
        => Dynamic t Bool
        -> Dynamic t Book
        -> m(El t)
 bookEl sel b = do
-  attrs <- mapDyn (\s -> monoidGuard s $ Component.selectedStyle ) sel
-  (element,_) <- elDynAttr' "li" attrs $ do
-    dynText =<< mapDyn title b
+  let commonAttrs = constDyn $ "class" =: "book-binding"
+  let attrs = fmap (\s -> monoidGuard s $ Component.selectedStyle ) sel
+  (e,_) <- elDynAttr' "li" (attrs <> commonAttrs) $ do
+    dynText $ fmap title b
     text " - "
-    dynText =<< mapDyn author b
-  pure element
+    dynText $ fmap author b
+  pure e
 
 monoidGuard :: Monoid a => Bool -> a -> a
 monoidGuard p a = if p then a else mempty
 
+dropdownOptions :: [Text]
 dropdownOptions = ["epub", "mobi", "azw3", "pdf", "other"]
 
 bodyElement :: MonadWidget t m => m ()
@@ -116,27 +148,14 @@ bodyElement = do
       model <- foldDyn update initialModel changes
   pure ()
 
--- shelf_for :: [Book] -> Event t Integer
--- shelf_for books = do
---   event <- selectViewListWithKey_ (constDyn 1) (constDyn books') $ \k bookDyn _switched ->
---     case Map.lookup k (Map.fromList $ zip [1..] books) of
---       Just b -> do
---         pure $ updated bookDyn
---       Nothing -> error "what"
---   pure event
-
--- bookEl :: MonadWidget t m => Dynamic t (Map.Map String String) -> Book -> m ()
--- bookEl attrs b = elDynAttr' "div" attrs $ do
---   elClass "dt" "book-title" $ text $ title b
---   elClass "dd" "book-author" $ text $ author b
-
+defaultUrl :: Text
 defaultUrl = "http://localhost:8081/books"
 
-mkReq :: Action -> XhrRequest
-mkReq InitialLoad= XhrRequest "GET" defaultUrl def
+mkReq :: Action -> XhrRequest ()
+mkReq InitialLoad = XhrRequest "GET" defaultUrl def
 mkReq (Query q)= XhrRequest "GET" uri def
   where
-    uri = defaultUrl ++ "?q=" ++ q
+    uri = defaultUrl <> "?q=" <> q
 
 -- urlEncode :: Text -> Maybe [(Text, Maybe Text)] -> Text
 -- urlEncode base qs = undefined

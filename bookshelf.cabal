@@ -9,7 +9,6 @@ library
   exposed-modules:
       Lib
     , Component
-    , DragonDrop
 
   build-depends:
       base
@@ -19,7 +18,7 @@ library
     , ghcjs-base
     , ghcjs-dom
     , haskell-src-exts >= 1.16 && < 1.18
-    , reflex == 0.4.0
+    , reflex
     , reflex-dom
     , containers == 0.5.*
     , safe == 0.3.*
@@ -35,7 +34,7 @@ executable bookshelf-exe
     , bookshelf
     , aeson
     , haskell-src-exts >= 1.16 && < 1.18
-    , reflex == 0.4.0
+    , reflex
     , reflex-dom
     , containers == 0.5.*
     , safe == 0.3.*
